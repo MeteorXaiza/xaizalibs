@@ -48,9 +48,72 @@ def getArrFits(strFilePath, header=False, index=0, message=False):
             return dicRet['data']
 
 
+def getDicFits(strFilePath, index=0, message=False):
+    dicRet = {}
+    if message:
+        print('loading ' + strFilePath + '...')
+    fits = ap.open(strFilePath)
+    if message:
+        print('finished.')
+    hdu = fits[index]
+    dicRet['data'] = hdu.data
+    dicRet['header'] = dict(hdu.header)
+    return dicRet
+
+
+def saveAsFits(arr, strFileName, header=None, message=False, divide=False):
+    if divide:
+        lsArr = list(arr)
+        lsHDU = []
+        cnt = 0
+        primary = True
+        for arr in lsArr:
+            if header != None:
+                lsHDU.append(genHDU(arr, header[cnt], primary=primary))
+            else:
+                lsHDU.append(genHDU(arr, primary=primary))
+            cnt += 1
+            primary = False
+    else:
+        lsHDU = [genHDU(arr, header)]
+    hduList = ap.HDUList(lsHDU)
+    hduList.writeto(strFileName, overwrite=True)
+    if message:
+        print(strFileName + " has been saved.")
+
+
+def setHeader(arg):
+    if arg == None:
+        return 'None'
+    else:
+        return str(arg)
+
+
 ########################################
-###########CMOS_Analyser_version_5 関連##
+###########CMOS_Analyzer_version_5 関連##
 ########################################
+def genArrArrPHArrange(maxLeak, mode='spiral'):
+    arrRet = np.zeros(((2*maxLeak+1)**2, 2))
+    arrRet[0] = maxLeak
+    if mode == 'spiral':
+        for cnt1 in range(maxLeak):
+            for cnt2 in range(cnt1 + 2):
+                arrRet[(2*cnt1+1)**2 + cnt2] = [maxLeak+cnt1+1, maxLeak+cnt2]
+            for cnt2 in range(2*cnt1 + 1):
+                arrRet[(2*cnt1 + 1)**2 + cnt1 + 2 + cnt2] = [
+                    maxLeak+cnt1-cnt2, maxLeak+cnt1+1]
+            for cnt2 in range(2*cnt1 + 3):
+                arrRet[(2*cnt1 + 1)**2 + 3*cnt1 + 3 + cnt2] = [
+                    maxLeak-cnt1-1, maxLeak+1+cnt1-cnt2]
+            for cnt2 in range(2*cnt1 + 1):
+                arrRet[(2*cnt1 + 1)**2 + 5*cnt1 + 6 + cnt2] = [
+                    maxLeak-cnt1+cnt2, maxLeak-cnt1-1]
+            for cnt2 in range(cnt1 + 1):
+                arrRet[(2*cnt1 + 1)**2 + 7*cnt1 + 7 + cnt2] = [
+                    maxLeak+cnt1+1, maxLeak-cnt1-1+cnt2]
+    return arrRet.astype(int)
+
+
 class BackGround():
     def __init__(
             self, tpFrameShape=None, lsDeg=[1,2,3,4],
@@ -738,7 +801,7 @@ class FrameStats():
                 return None
         if strValidPixelCondition is not None:
             arrIsValidPixelFrame = self.genArrValFrame(
-                strFilledVal, arrRawFrame, ref=lsArrReferenceFrame)
+                strValidPixelCondition, arrRawFrame, ref=lsArrReferenceFrame)
         else:
             arrIsValidPixelFrame = np.ones(self.tpFrameShape, dtype=bool)
         if arrIsValidPixelFrame is None:
