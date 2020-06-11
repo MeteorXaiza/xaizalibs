@@ -7,7 +7,47 @@ import sympy as sp
 from .standardlib import *
 
 
+########################################
+###########CSV関連#######################
+########################################
+def getArrFloatCsv(strFilePath, message=False):
+    if message:
+        print('loading ' + strFilePath + '...')
+    File = open(strFilePath, "r")
+    if message:
+        print('finished.')
+    ls = list(csv.reader(
+        File, delimiter=",", doublequote=True, lineterminator="\r\n",
+        quotechar='"', skipinitialspace=True))
+    return np.array(ls).astype(float)
 
+
+def getArrStrCsv(strFilePath, message=False):
+    if message:
+        print('loading ' + strFilePath + '...')
+    File = open(strFilePath, "r")
+    if message:
+        print('finished.')
+    ls = list(csv.reader(
+        File, delimiter=",", doublequote=True, lineterminator="\r\n",
+        quotechar='"', skipinitialspace=True))
+    return np.array(ls)
+
+
+def saveAsCsv(arr, strFilePath, encoding='utf-8', dir=True, message=False):
+    #2次元ndarrayをcsv形式で保存する関数
+    strFileAbsPath = getStrAbsPath(strFilePath)
+    strDirAbsPath = genLsStrDirPathAndFileName(strFileAbsPath)[0]
+    if not os.path.isdir(strDirAbsPath) and dir:
+        mkdir(strDirPath, message=message)
+    if np.ndim(arr) == 1:
+        arr = np.reshape(arr, (1,np.size(arr)))
+    with open(strFilePath, 'w', encoding=encoding) as File:
+        writer = csv.writer(File,lineterminator="\n")
+        for cnt in range(len(arr)):
+            writer.writerow(arr[cnt])
+    if message:
+        print(strFileAbsPath + " has been saved.")
 
 
 ########################################
