@@ -3,11 +3,8 @@
 
 from math import *
 import configparser
-import csv
 import json
-import itertools
 import os
-from PIL import Image
 import re
 import shlex
 import shutil
@@ -291,21 +288,3 @@ def saveAsTxt(ls, strFilePath, message=False):
         f.write('\n'.join(ls))
     if message:
         print(strFilePath + " has been saved.")
-
-
-########################################
-###########PIL関連#######################
-########################################
-def getImg(strFilePath, message=False):
-    if message:
-        print('loading ' + strFilePath + '...')
-    ret = Image.open(strFilePath)
-    if message:
-        print('finished.')
-    return ret
-
-
-def saveAsImg(img, strFilePath, message=False):
-    img.save(strFilePath)
-    if message:
-        print(strFilePath + ' has been saved.')
