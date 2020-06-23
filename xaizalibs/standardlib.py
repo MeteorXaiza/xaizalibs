@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import sys
 import time
-import urllib
+import urllib.request
 
 
 def cp(strInputFilePath, strOutputFilePath, dir=True, message=True, cp2=False):
@@ -176,7 +176,7 @@ def getMtime(strFilePath):
     return os.path.getmtime(strFilePath)
 
 
-def getStrAbsPath(strPath, slash=False, windows=True):
+def getStrAbsPath(strPath, slash=True, windows=True):
     strRet = os.path.abspath(strPath)
     if windows:
         strRet = strRet.replace('\\', '/')
@@ -273,10 +273,10 @@ def saveAsJSON(dic, strFilePath, indent=None, message=False):
 ########################################
 ###########TXTファイル関連################
 ########################################
-def getLsStrTxtLine(strFilePath, message=False):
+def getLsStrTxtLine(strFilePath, encoding='utf-8', message=False):
     if message:
         print('loading ' + strFilePath + '...')
-    with open(strFilePath) as f:
+    with open(strFilePath, encoding=encoding) as f:
         if message:
             print('finished.')
         lsRet = [s.strip('\n') for s in f.readlines()]
