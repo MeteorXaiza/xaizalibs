@@ -188,6 +188,92 @@ def genArrBins(strBins, mean, std, skewness, kurtosis, min, max):
     return eval(strBins)
 
 
+class PolyFittingManager2():
+    def __init__(self, deg=1):
+        self.deg = deg
+        self.dicArrSumDivProdPowXAndPowYBySqErrY = None
+        self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY = {}
+        self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(0, 0)] = sp.Symbol(
+            '1/sigma_i**2')
+        self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(1, 0)] = sp.Symbol(
+            'sum(x_i/sigma_i**2)')
+        for cnt in range(2*self.deg - 1):
+            degX = cnt + 2
+            self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(degX, 0)] = (
+                sp.Symbol('sum(x_i**'+str(degX)+'/sigma_i**2)'))
+        self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(0, 1)] = sp.Symbol(
+            'sum(y_i/sigma_i**2)')
+        self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(1, 1)] = sp.Symbol(
+            'sum(x_i*y_i/sigma_i**2)')
+        for cnt in range(self.deg - 1):
+            degX = cnt + 2
+            self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(degX, 2)] = sp.Symbol(
+                'sum(x_i**'+str(degX)+'*y_i/sigma_i**2)')
+        self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(0, 2)] = sp.Symbol(
+            'sum(y_i**2/sigma_i**2')
+        self.dicSymbolParam = {}
+        for cnt in range(self.deg + 1):
+            self.dicSymbolParam[cnt] = sp.Symbol('a_'+str(cnt))
+        self.symbolStdY = sp.Symbol('sigma_y')
+        self.tpShape = None
+    def defineShape(self, tpShape):
+        self.tpShape = tpShape
+        self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY = {}
+        for cnt in range(2*self.deg + 1):
+            self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(cnt, 0)] = np.zeros(tpShape)
+        for cnt in range(self.deg + 1):
+            self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(cnt, 1)] = np.zeros(tpShape)
+        self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(0, 2)] = np.zeros(tpShape)
+    def appendData(self, arrX, arrY, arrErrY=None, arrIsValid=None):
+        if self.tpShape is None:
+            self.defineShape(arrX.shape)
+        if arrErrY is None:
+            arrErrY = np.ones(self.tpShape)
+        if arrIsValid is None:
+            arrIsValid = np.ones(self.tpShape, dtype='bool')
+        self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(0, 0)] += np.where(
+            arrIsValid, 1/arrErrY**2, 0)
+        for cnt in range(2*self.deg):
+            degX = cnt + 1
+            self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(degX, 0)] += np.where(
+                arrIsValid, arrX**degX*arrWeight, 0)
+        self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(0, 1)] += np.where(
+            arrIsValid, arrY*arrWeight, 0)
+        for cnt in range(self.deg):
+            degX = cnt + 1
+            self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(degX, 1)] += np.where(
+                arrIsValid, arrX**degX*arrY*arrWeight, 0)
+        self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(0, 2)] = np.where(
+            arrIsValid, arrY*arrWeight, 0)
+    def genSymbolFuncOptParam(self, deg):
+        lsSymbolSumProdPowXAndWeight = []
+        for cnt in range(2*self.deg + 1):
+            lsSymbolSumProdPowXAndWeight.append(
+                self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(cnt, 0)])
+        lsLsSymbolSumProdPowXAndWeight = []
+        lsSymbolSumProdPowXAndYAndWeight = []
+        for cnt in range(self.deg + 1):
+            lsLsSymbolSumProdPowXAndWeight.append(
+                lsSymbolSumProdPowXAndWeight[cnt:cnt+self.deg+1])
+            lsSymbolSumProdPowXAndYAndWeight.append(
+                self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(cnt, 1)])
+        matrixSymbolSumProdPowXAndWeight = sp.Matrix(
+            lsLsSymbolSumProdPowXAndWeight)
+        vectorSymbolSumProdPowXAndYAndWeight = sp.Matrix(
+            lsSymbolSumProdPowXAndYAndWeight)
+        symbolRet = (
+            (matrixSymbolSumProdPowXAndWeight**-1)[deg, :]
+            * vectorSymbolSumProdPowXAndYAndWeight
+        )[0].factor()
+        return symbolRet
+    def genSymbolFuncSumProdSqDiffFuncByYAndWeight
+
+
+
+
+
+
+
 class PolyFittingManager():
     # x : 説明変数
     # y : 目的変数
