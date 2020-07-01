@@ -194,7 +194,7 @@ class PolyFittingManager2():
         self.dicArrSumDivProdPowXAndPowYBySqErrY = None
         self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY = {}
         self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(0, 0)] = sp.Symbol(
-            '1/sigma_i**2')
+            'sum(1/sigma_i**2)')
         self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(1, 0)] = sp.Symbol(
             'sum(x_i/sigma_i**2)')
         for cnt in range(2*self.deg - 1):
@@ -207,14 +207,16 @@ class PolyFittingManager2():
             'sum(x_i*y_i/sigma_i**2)')
         for cnt in range(self.deg - 1):
             degX = cnt + 2
-            self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(degX, 2)] = sp.Symbol(
+            self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(degX, 1)] = sp.Symbol(
                 'sum(x_i**'+str(degX)+'*y_i/sigma_i**2)')
         self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(0, 2)] = sp.Symbol(
             'sum(y_i**2/sigma_i**2')
         self.dicSymbolParam = {}
         for cnt in range(self.deg + 1):
             self.dicSymbolParam[cnt] = sp.Symbol('a_'+str(cnt))
-        self.symbolStdY = sp.Symbol('sigma_y')
+        self.symbolX = sp.Symbol('x_i')
+        self.symbolY = sp.Symbol('y_i')
+        self.symbolSigma = sp.Symbol('sigma_i')
         self.tpShape = None
     def defineShape(self, tpShape):
         self.tpShape = tpShape
@@ -236,15 +238,15 @@ class PolyFittingManager2():
         for cnt in range(2*self.deg):
             degX = cnt + 1
             self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(degX, 0)] += np.where(
-                arrIsValid, arrX**degX*arrWeight, 0)
+                arrIsValid, arrX**degX/arrErrY**2, 0)
         self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(0, 1)] += np.where(
-            arrIsValid, arrY*arrWeight, 0)
+            arrIsValid, arrY/arrErrY**2, 0)
         for cnt in range(self.deg):
             degX = cnt + 1
             self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(degX, 1)] += np.where(
-                arrIsValid, arrX**degX*arrY*arrWeight, 0)
+                arrIsValid, arrX**degX*arrY/arrErrY**2, 0)
         self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(0, 2)] = np.where(
-            arrIsValid, arrY*arrWeight, 0)
+            arrIsValid, arrY**2/arrErrY**2, 0)
     def genSymbolFuncOptParam(self, deg):
         lsSymbolSumProdPowXAndWeight = []
         for cnt in range(2*self.deg + 1):
@@ -266,7 +268,50 @@ class PolyFittingManager2():
             * vectorSymbolSumProdPowXAndYAndWeight
         )[0].factor()
         return symbolRet
-    def genSymbolFuncSumProdSqDiffFuncByYAndWeight
+    def genSymbolFuncSumFunc(self, symbolFunc):
+        symbolRet = 0
+        symbolRet += symbolFunc.coeff(self.symbolSigma, -2).subs([(self.symbolX, 0), (self.symbolY, 0)])
+    def genSymbolFuncSumProdSqDiffFuncByYAndSqErrY(self, symbolFunc):
+        symbolFuncDiffFuncByY = 0
+        for cnt in range(self.deg + 1):
+            symbolFuncDiffFuncByY += (
+                symbolFunc.diff(
+                    self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(cnt, 1)])
+                * self.symbolX**cnt / self.symbolSigma**2)
+        symbolFuncDiffFuncByY += (
+            symbolFunc.diff(
+                self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(0, 2)])
+            * 2 * self.symbolY / self.symbolSigma**2)
+        symbolFuncProdSqDiffFuncByYAndSqErrY = (
+            symbolFuncDiffFuncByY * self.symbolSigma**2).expand()
+        symbolRet = 0
+        for cnt in range(2*self.deg + 1):
+            symbolRet += (
+                symbolFuncProdSqDiffFuncByYAndSqErrY.coeff(
+                    self.symbolX, cnt
+                ).coeff(
+                    self.symbolY, 0
+                ).coeff(
+                    self.symbolSigma, -2
+                ) * self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(cnt, 0)])
+        for cnt in range(self.deg + 1):
+            symbolRet += (
+                symbolFuncProdSqDiffFuncByYAndSqErrY.coeff(
+                    self.symbolX, cnt
+                ).coeff(
+                    self.symbolY, 1
+                ).coeff(
+                    self.symbolSigma, -2
+                ) * self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(cnt, 1)])
+        symbolRet += (
+            symbolFuncProdSqDiffFuncByYAndSqErrY.coeff(
+                self.symbolX, 0
+            ).coeff(
+                self.symbolY, 2
+            ).coeff(
+                self.symbolSigma, -2
+            ) * self.dicSymbolSumDivProdPowXAndPowYAndBySqErrY[(0, 2)])
+
 
 
 
