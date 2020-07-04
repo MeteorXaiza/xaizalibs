@@ -319,7 +319,8 @@ class PolyFittingManager():
                 self.dicSymbolSumDivProdPowXAndPowYBySqErrY[(0, 2)])
             * 2 * self.symbolY * self.symbolSigma**-2)
         symbolFuncProdSqDiffFuncByYAndSqErrY = (
-            symbolFuncDiffFuncByY**2 * self.symbolSigma**2).expand()
+            symbolFuncDiffFuncByY**2 * self.symbolSigma**2
+        ).expand()
         return sp.sqrt(
             self.genSymbolFuncSumFunc(symbolFuncProdSqDiffFuncByYAndSqErrY))
     def genSymbolFuncErrParam(self, deg):
