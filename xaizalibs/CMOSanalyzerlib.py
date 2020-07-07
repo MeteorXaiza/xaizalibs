@@ -752,7 +752,9 @@ class EventList():
 
 
 class FrameStats():
-    def __init__(self, lsDeg=[1,2,3,4]):
+    def __init__(self, lsDeg=[1,2,3,4], lsTpInvalidFrameShape=[]):
+        self.tpFrameShape = None
+        self.lsTpInvalidFrameShape = lsTpInvalidFrameShape
         self.frameCnt = 0
         self.lsDeg = lsDeg
         self.cnt = 0
@@ -763,6 +765,10 @@ class FrameStats():
         self.min = None
         self.tpFrameShape = None
         self.lsStrRawFrameFilePath = []
+        self.arrCntFrame = None
+        self.dicArrSumPow = None
+        self.arrMinFrame = None
+        self.arrMaxFrame = None
     def invalidFrameShapeProcess(
             self, mode='continue', message=False, strRawFrameFilePath=None):
         if message and strRawFrameFilePath is not None:
@@ -773,13 +779,29 @@ class FrameStats():
             return False
         elif mode == 'quit':
             quit()
+    def defineFrameShape(self, tpFrameShape):
+        self.tpFrameShape = tpFrameShape
+        self.arrCntSignalFrame = np.zeros(tpFrameShape).astype('int16')
+        for deg in self.lsDeg:
+            self.dicArrSumPowFrame[deg] = (
+                np.zeros(tpFrameShape).astype(self.strDtype))
+        # np.nanはint型の配列にすると0になってしまうのでfloatで定義する
+        self.arrMinFrame = (
+            np.ones(tpFrameShape).astype('float16') * np.nan)
+        self.arrMaxFrame = (
+            np.ones(tpFrameShape).astype('float16') * np.nan)
     def loadFrameFile(
             self, strRawFrameFilePath, strFilledVal=None,
             strValidPixelCondition=None, message=False, ignoreNan=True,
             ignoreInf=True, ignoreNinf=True, eventData=None,
             strInvalidFrameShapeProcessMode='continue', tpValidFrameShape=None,
             lsArrReferenceFrame=[], excludeRim=True):
+        def a():
+            pass
+            https://www.google.com/search?q=%E5%85%AB%E5%B0%BA%E6%A7%98&tbs=cdr%3A1%2Ccd_min%3A%2Ccd_max%3A7%2F5%2F2010&
         arrRawFrame = getArrFits(strRawFrameFilePath, message=message)
+        if self.tpFrameShape is None:
+            self.defineFrameShape(arrRawFrame.shape)
         self.tpFrameShape = arrRawFrame.shape
         if tpValidFrameShape is not None:
             if self.tpFrameShape != tpValidFrameShape:
@@ -843,6 +865,8 @@ class FrameStats():
             self.max = arrValidFilledVal.max()
         self.min = min(self.min, arrValidFilledVal.min())
         self.max = max(self.max, arrValidFilledVal.max())
+        for deg in self.lsDeg:
+            self.dicArrSumPowFrame[deg] += np.where(arrIsValidPixelFrame, arrValidFilledVal, 0)
     def genArrValFrame(self, strVal, raw, ref=[]):
         Y = (
             np.arange(self.tpFrameShape[0]).reshape((self.tpFrameShape[0], 1))
