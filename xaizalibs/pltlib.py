@@ -13,13 +13,14 @@ def resetFig(height=640, width=480):
     plt.figure(figsize=(height/100, width/100))
 
 
-def setPlot(arrX, arrY, color='red', label=None, linewidth=None):
-    plt.plot(arrX, arrY, color=color, label=label, linewidth=linewidth)
+def setPlot(arrX, arrY, color='red', fig=plt, label=None, linewidth=None):
+    fig.plot(arrX, arrY, color=color, label=label, linewidth=linewidth)
 
 
 def setScatter(
-        arrX, arrY, alpha=1., color='red', label=None, marker='.', s=36):
-    plt.scatter(
+        arrX, arrY, alpha=1., color='red', fig=plt, label=None,
+        marker='.', s=36):
+    fig.scatter(
         arrX, arrY, alpha=alpha, color=color,
         label=label, marker=marker, s=s)
 

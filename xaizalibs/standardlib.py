@@ -283,8 +283,8 @@ def getLsStrTxtLine(strFilePath, encoding='utf-8', message=False):
         return lsRet
 
 
-def saveAsTxt(ls, strFilePath, message=False):
-    with open(strFilePath, mode='w') as f:
+def saveAsTxt(ls, strFilePath, message=False, encoding='utf-8'):
+    with open(strFilePath, mode='w', encoding='utf-8') as f:
         f.write('\n'.join(ls))
     if message:
         print(strFilePath + " has been saved.")

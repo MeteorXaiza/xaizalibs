@@ -166,6 +166,8 @@ class BackGround():
                 return False
             else:
                 return True
+    def appendData(self, arrSignalFrame, frameID, eventData=None):
+        pass
     def loadSignalFrameFile(
             self, strSignalFrameFilePath, eventData=None, HDUIndex=0,
             strInvalidFrameShapeProcessMode='continue',
@@ -766,7 +768,7 @@ class FrameStats():
         self.tpFrameShape = None
         self.lsStrRawFrameFilePath = []
         self.arrCntFrame = None
-        self.dicArrSumPow = None
+        self.dicArrSumPowFrame = {}
         self.arrMinFrame = None
         self.arrMaxFrame = None
     def invalidFrameShapeProcess(
@@ -783,8 +785,7 @@ class FrameStats():
         self.tpFrameShape = tpFrameShape
         self.arrCntSignalFrame = np.zeros(tpFrameShape).astype('int16')
         for deg in self.lsDeg:
-            self.dicArrSumPowFrame[deg] = (
-                np.zeros(tpFrameShape).astype(self.strDtype))
+            self.dicArrSumPowFrame[deg] = np.zeros(tpFrameShape)
         # np.nanはint型の配列にすると0になってしまうのでfloatで定義する
         self.arrMinFrame = (
             np.ones(tpFrameShape).astype('float16') * np.nan)
@@ -796,9 +797,6 @@ class FrameStats():
             ignoreInf=True, ignoreNinf=True, eventData=None,
             strInvalidFrameShapeProcessMode='continue', tpValidFrameShape=None,
             lsArrReferenceFrame=[], excludeRim=True):
-        def a():
-            pass
-            https://www.google.com/search?q=%E5%85%AB%E5%B0%BA%E6%A7%98&tbs=cdr%3A1%2Ccd_min%3A%2Ccd_max%3A7%2F5%2F2010&
         arrRawFrame = getArrFits(strRawFrameFilePath, message=message)
         if self.tpFrameShape is None:
             self.defineFrameShape(arrRawFrame.shape)
@@ -866,7 +864,7 @@ class FrameStats():
         self.min = min(self.min, arrValidFilledVal.min())
         self.max = max(self.max, arrValidFilledVal.max())
         for deg in self.lsDeg:
-            self.dicArrSumPowFrame[deg] += np.where(arrIsValidPixelFrame, arrValidFilledVal, 0)
+            self.dicArrSumPowFrame[deg] += np.where(arrIsValidPixelFrame, arrFilledValFrame, 0).astype('float64')
     def genArrValFrame(self, strVal, raw, ref=[]):
         Y = (
             np.arange(self.tpFrameShape[0]).reshape((self.tpFrameShape[0], 1))
