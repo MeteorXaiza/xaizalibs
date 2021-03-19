@@ -13,10 +13,10 @@ from .standardlib import *
 ########################################
 ###########CSV関連#######################
 ########################################
-def getArrFloatCsv(strFilePath, message=False):
+def getArrFloatCsv(strFilePath, message=False, encoding='utf-8'):
     if message:
         print('loading ' + strFilePath + '...')
-    File = open(strFilePath, "r")
+    File = open(strFilePath, "r", encoding=encoding)
     if message:
         print('finished.')
     ls = list(csv.reader(
@@ -25,10 +25,10 @@ def getArrFloatCsv(strFilePath, message=False):
     return np.array(ls).astype(float)
 
 
-def getArrStrCsv(strFilePath, message=False):
+def getArrStrCsv(strFilePath, message=False, encoding='utf-8'):
     if message:
         print('loading ' + strFilePath + '...')
-    File = open(strFilePath, "r")
+    File = open(strFilePath, "r", encoding=encoding)
     if message:
         print('finished.')
     ls = list(csv.reader(

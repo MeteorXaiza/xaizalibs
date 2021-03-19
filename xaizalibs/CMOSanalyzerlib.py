@@ -1,7 +1,10 @@
 # coding:utf-8
 
 
+from PIL import Image
+
 import astropy.io.fits as ap
+from astropy.visualization import ZScaleInterval
 
 from .standardlib import *
 from .nplib import *
@@ -122,6 +125,7 @@ class BackGround():
         self.lsDeg = lsDeg
         self.lsTpInvalidFrameShape = lsTpInvalidFrameShape
         self.strDtype = strDtype
+        self.lsFrameID = []
         self.lsStrSignalFrameFilePath = []
         self.arrCntSignalFrame = None
         self.dicArrSumPowSignalFrame = {}
@@ -166,8 +170,87 @@ class BackGround():
                 return False
             else:
                 return True
-    def appendData(self, arrSignalFrame, frameID, eventData=None):
-        pass
+    def appendData(
+            self, arrSignalFrame, frameID=None, eventData=None,
+            strInvalidFrameShapeProcessMode='continue', maxLeak=None,
+            message=False, ignoreNan=True, ignoreInf=True, ignoreNinf=True):
+        if self.tpFrameShape is None:
+            self.defineFrameShape(arrSignalFrame.shape)
+        elif self.tpFrameShape != arrSignalFrame.shape:
+            res = self.invalidFrameShapeProcess(
+                mode=strInvalidFrameShapeProcessMode,
+                tpCurrentFrameShape=arrSignalFrame.shape,
+                message=message, strSignalFrameFilePath=strSignalFrameFilePath)
+            if res:
+                self.__init__(
+                    tpFrameShape=arrSignalFrame.shape, lsDeg=self.lsDeg,
+                    lsTpInvalidFrameShape=(
+                        self.lsTpInvalidFrameShape+[self.tpFrameShape]))
+            else:
+                return None
+        self.lsFrameID.append(frameID)
+        # 無効な値（＝nan、inf、-inf）のマスク作成処理
+        arrIsInvalidFrame = np.zeros(arrSignalFrame.shape, dtype='bool')
+        if ignoreNan:
+            arrIsInvalidFrame += np.isnan(arrSignalFrame)
+        if ignoreInf:
+            arrIsInvalidFrame += arrSignalFrame == np.inf
+        if ignoreNinf:
+            arrIsInvalidFrame += arrSignalFrame == -np.inf
+
+        if eventData is not None:
+            if maxLeak is None:
+                maxLeak = eventData.maxLeak
+            arrIsEventRangeFrame = eventData.genArrIsEventRangeFrame(
+                tpFrameShape=self.tpFrameShape, maxLeak=maxLeak)
+        if eventData is not None:
+            self.arrCntSignalFrame[
+                    ~arrIsEventRangeFrame * ~arrIsInvalidFrame
+                ] += 1
+        else:
+            self.arrCntSignalFrame[~arrIsInvalidFrame] += 1
+        # 累乗の処理
+        if eventData is not None:
+            arrReplaceSignalFrame = np.where(
+                    arrIsEventRangeFrame+arrIsInvalidFrame, 0,
+                    arrSignalFrame
+                ).astype(self.strDtype)
+            for deg in self.lsDeg:
+                self.dicArrSumPowSignalFrame[deg] += arrReplaceSignalFrame ** deg
+        else:
+            arrTypedSignalFrame = np.where(
+                    arrIsInvalidFrame, 0, arrSignalFrame
+                ).astype(self.strDtype)
+            for deg in self.lsDeg:
+                self.dicArrSumPowSignalFrame[deg] += arrTypedSignalFrame ** deg
+        # 最小値、最大値の処理
+        # 初めて有効な信号が入ったピクセルの処理（＝最小値最大値をその信号に置換）
+        if eventData is not None:
+            arrIsTargetPixelFrame = (
+                ~arrIsEventRangeFrame * ~arrIsInvalidFrame * (
+                    self.arrCntSignalFrame == 1))
+        else:
+            arrIsTargetPixelFrame = ~arrIsInvalidFrame * (
+                self.arrCntSignalFrame == 1)
+        self.arrMinSignalFrame = np.where(
+            arrIsTargetPixelFrame, arrSignalFrame, self.arrMinSignalFrame)
+        self.arrMaxSignalFrame = np.where(
+            arrIsTargetPixelFrame, arrSignalFrame, self.arrMaxSignalFrame)
+        # 有効な信号が入ったピクセルかつこれが初めてではないピクセルの処理
+        if eventData is not None:
+            arrIsTargetPixelFrame = (
+                ~arrIsEventRangeFrame * ~arrIsInvalidFrame * (
+                    self.arrCntSignalFrame > 1))
+        else:
+            arrIsTargetPixelFrame = ~arrIsInvalidFrame * (
+                self.arrCntSignalFrame > 1)
+        arrTargetPixelSignal = arrSignalFrame[arrIsTargetPixelFrame]
+        self.arrMinSignalFrame[arrIsTargetPixelFrame] = np.min([
+            self.arrMinSignalFrame[arrIsTargetPixelFrame],
+            arrTargetPixelSignal], axis=0)
+        self.arrMaxSignalFrame[arrIsTargetPixelFrame] = np.max([
+            self.arrMaxSignalFrame[arrIsTargetPixelFrame],
+            arrTargetPixelSignal], axis=0)
     def loadSignalFrameFile(
             self, strSignalFrameFilePath, eventData=None, HDUIndex=0,
             strInvalidFrameShapeProcessMode='continue',
@@ -412,6 +495,8 @@ class EventData():
         self.maxLeak = None
         self.cnt = None
         self.arrArrCenterPixelIndex = None
+        self.arrEvent_th = None
+        self.arrSplit_th = None
         self.arrArrPHImg = None
         self.arrPHasum = None
         self.arrVortex = None
@@ -508,7 +593,13 @@ class EventData():
         arrScoreTrimedImg[1, 1] = 0
         startPixel = maxLeak - 1
         stopPixel = maxLeak + 2
+        self.arrEvent_th = np.zeros(self.cnt, dtype='float64')
+        self.arrSplit_th = np.zeros(self.cnt, dtype='float64')
         for cnt1, arrEventCentePixel in enumerate(self.arrArrCenterPixelIndex):
+            self.arrEvent_th[cnt1] = arrEvent_thFrame[
+                arrEventCentePixel[0], arrEventCentePixel[1]]
+            self.arrSplit_th[cnt1] = arrSplit_thFrame[
+                arrEventCentePixel[0], arrEventCentePixel[1]]
             arrEventStartPixel = arrEventCentePixel - maxLeak
             arrEventStopPixel = arrEventCentePixel + maxLeak + 1
             self.arrArrPHImg[cnt1] = arrPHFrame[
@@ -1063,3 +1154,28 @@ class FrameSpectrum():
             dicHeader['F' + str(cnt)] = strRawFrameFilePath
         dicHeader.update(dicAppendixHeader)
         saveAsFits(arrHistVal, strFilePath, message=message, header=dicHeader)
+
+
+class ZScaleManager():
+    def __init__(self, arrSource=None):
+        self.arrSource = arrSource
+        self.zScaleInterval = ZScaleInterval(nsamples=600)
+        self.lsLimit = None
+        self.imgZScale = None
+    def setArrSource(self, arrSource):
+        self.arrSource = arrSource
+    def setLsLimit(self):
+        arrLimit = self.zScaleInterval.get_limits(self.arrSource)
+        self.lsLimit = [float(arrLimit[0]), float(arrLimit[1])]
+    def setImgZScale(self):
+        arrZScale = self.arrSource.copy()
+        arrZScale[arrZScale <= self.lsLimit[0]] = self.lsLimit[0]
+        arrZScale[self.lsLimit[1] <= arrZScale] = self.lsLimit[1]
+        arrImgZScale = np.zeros(self.arrSource.shape+(3,), dtype='uint8')
+        arrImgZScale[:, :, :3] = ((arrZScale[::-1] - self.lsLimit[0]) / (
+                    self.lsLimit[1] - self.lsLimit[0]
+            ) * (2**8 - 1)).astype('uint8').reshape(self.arrSource.shape+(1,))
+        arrIsNan = np.isnan(self.arrSource)
+        arrImgZScale[arrIsNan[::-1], 0] = 255
+        arrImgZScale[arrIsNan[::-1], 1:3] = 0
+        self.imgZScale = Image.fromarray(arrImgZScale, mode='RGB')
