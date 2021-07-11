@@ -178,13 +178,18 @@ def getMtime(strFilePath):
 
 def getStrAbsPath(strPath, slash=True, windows=True):
     strRet = os.path.abspath(strPath)
+    if slash:
+        # 存在していて、ディレクトリ
+        if os.path.isdir(strRet):
+            strRet += '/'
+        # 存在していないが、ディレクトリ（末尾が/または\\）
+        elif strPath[-1] in ['/', '\\']:
+            strRet += strPath[-1]
+    if os.path.isdir(strRet):
+        if not(slash) and strRet[-1] == '/':
+            strRet = strRet[:-1]
     if windows:
         strRet = strRet.replace('\\', '/')
-    if os.path.isdir(strRet):
-        if slash and strRet[-1] != '/':
-            strRet += '/'
-        elif not(slash) and strRet[-1] == '/':
-            strRet = strRet[:-1]
     return strRet
 
 
